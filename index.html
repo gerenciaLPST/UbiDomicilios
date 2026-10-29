@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>La Patrona St.</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      text-align: center;
+      background-color: #f8f9fa;
+    }
+    .card {
+      padding: 2rem;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      max-width: 400px;
+      width: 90%;
+    }
+    button {
+      margin: 8px 0;
+      width: 100%;
+      padding: 12px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2 id="status">Buscando tu sede más cercana...</h2>
+    <p id="subtext">Por favor, permite el acceso a tu ubicación.</p>
+    <div id="fallback-options" style="display: none;">
+      <p>Selecciona manualmente tu sede:</p>
+      <button onclick="window.location.href=SEDE_1.url">Sede Las Mercedes</button>
+      <button onclick="window.location.href=SEDE_2.url">Sede Llanogrande</button>
+    </div>
+  </div>
+
+  <script>
+    const SEDE_1 = {
+      nombre: "Sede Las Mercedes",
+      lat: 3.5503151448560164,
+      lng: -76.29120161809116,
+      url: "https://menu.fu.do/lapatronaloungelasmercedes_"
+    };
+
+    const SEDE_2 = {
+      nombre: "Sede Llanogrande",
+      lat: 3.5286763899009572,
+      lng: -76.31630634878204,
+      url: "https://menu-llanogrande.tu-restaurante.com" // <-- Reemplaza por el link de Llanogrande
+    };
+
+    function calcularDistancia(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c; 
+    }
+
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const userLat = position.coords.latitude;
+          const userLng = position.coords.longitude;
+
+          const distSede1 = calcularDistancia(userLat, userLng, SEDE_1.lat, SEDE_1.lng);
+          const distSede2 = calcularDistancia(userLat, userLng, SEDE_2.lat, SEDE_2.lng);
+
+          if (distSede1 < distSede2) {
+            document.getElementById("status").innerText = `Redirigiendo a ${SEDE_1.nombre}...`;
+            window.location.replace(SEDE_1.url);
+          } else {
+            document.getElementById("status").innerText = `Redirigiendo a ${SEDE_2.nombre}...`;
+            window.location.replace(SEDE_2.url);
+          }
+        },
+        (error) => {
+          document.getElementById("status").innerText = "Selecciona tu sede";
+          document.getElementById("subtext").style.display = "none";
+          document.getElementById("fallback-options").style.display = "block";
+        }
+      );
+    } else {
+      document.getElementById("status").innerText = "Selecciona tu sede";
+      document.getElementById("subtext").style.display = "none";
+      document.getElementById("fallback-options").style.display = "block";
+    }
+  </script>
+</body>
+</html>
