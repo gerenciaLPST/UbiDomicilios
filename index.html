@@ -27,13 +27,13 @@
       margin: 8px 0;
       width: 100%;
       padding: 12px;
-      background-color: #007bff;
-      color: white;
       border: none;
       border-radius: 4px;
       cursor: pointer;
       font-size: 1rem;
     }
+    .btn-primary { background-color: #007bff; color: white; }
+    .btn-whatsapp { background-color: #25D366; color: white; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -41,10 +41,22 @@
   <div class="card">
     <h2 id="status">Buscando tu sede más cercana...</h2>
     <p id="subtext">Por favor, permite el acceso a tu ubicación.</p>
+
+    <!-- Opciones si está fuera de cobertura -->
+    <div id="out-of-zone" style="display: none;">
+      <p>Tu ubicación está fuera de nuestra zona de cobertura directa.</p>
+      <button class="btn-whatsapp" onclick="abrirWhatsApp()">Contactar por WhatsApp</button>
+      <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
+      <p style="font-size: 0.9rem; color: #666;">O selecciona tu sede manualmente:</p>
+      <button class="btn-primary" onclick="window.location.href=SEDE_1.url">Sede Las Mercedes</button>
+      <button class="btn-primary" onclick="window.location.href=SEDE_2.url">Sede Llanogrande</button>
+    </div>
+
+    <!-- Opciones si falla el GPS -->
     <div id="fallback-options" style="display: none;">
       <p>Selecciona manualmente tu sede:</p>
-      <button onclick="window.location.href=SEDE_1.url">Sede Las Mercedes</button>
-      <button onclick="window.location.href=SEDE_2.url">Sede Llanogrande</button>
+      <button class="btn-primary" onclick="window.location.href=SEDE_1.url">Sede Las Mercedes</button>
+      <button class="btn-primary" onclick="window.location.href=SEDE_2.url">Sede Llanogrande</button>
     </div>
   </div>
 
@@ -60,8 +72,40 @@
       nombre: "Sede Llanogrande",
       lat: 3.5286763899009572,
       lng: -76.31630634878204,
-      url: "https://menu.fu.do/lapatronastllanogrande" // <-- Reemplaza por el link de Llanogrande
+      url: "https://menu.fu.do/lapatronastllanogrande"
     };
+
+    // Polígono de cobertura con tus 14 puntos (lat, lng)
+    const POLIGONO_COBERTURA = [
+      [3.5137, -76.2896], // Sembrador
+      [3.5380, -76.3230], // Occidente (Univalle / Unicentro)
+      [3.4963, -76.2962], // Italia Via Pradera
+      [3.4969, -76.3115], // Italia 1
+      [3.5056, -76.3146], // Palmira via Candelaria
+      [3.5206, -76.3123], // Inder
+      [3.5286, -76.3208], // Llanogrande
+      [3.5484, -76.3182], // 1
+      [3.5581, -76.3111], // Coronado
+      [3.5611, -76.3013], // Zamorano
+      [3.5594, -76.2798], // Belen
+      [3.5421, -76.2742], // Guayabal
+      [3.5282, -76.2679], // Batallon
+      [3.5150, -76.2722]  // Las Flores
+    ];
+
+    // Algoritmo Ray-Casting para verificar si el punto está dentro del polígono
+    function puntoEnPoligono(lat, lng, poligono) {
+      let dentro = false;
+      for (let i = 0, j = poligono.length - 1; i < poligono.length; j = i++) {
+        const xi = poligono[i][0], yi = poligono[i][1];
+        const xj = poligono[j][0], yj = poligono[j][1];
+        
+        const intersecto = ((yi > lng) !== (yj > lng)) &&
+            (lat < (xj - xi) * (lng - yi) / (yj - yi) + xi);
+        if (intersecto) dentro = !dentro;
+      }
+      return dentro;
+    }
 
     function calcularDistancia(lat1, lon1, lat2, lon2) {
       const R = 6371;
@@ -75,12 +119,28 @@
       return R * c; 
     }
 
+    function abrirWhatsApp() {
+      const mensaje = encodeURIComponent("¡Hola! Quisiera realizar un pedido, pero mi ubicación está fuera del área de cobertura estándar.");
+      window.location.href = `https://wa.me/573175997275?text=${mensaje}`;
+    }
+
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const userLat = position.coords.latitude;
           const userLng = position.coords.longitude;
 
+          // 1. Verificar cobertura
+          const estaEnZona = puntoEnPoligono(userLat, userLng, POLIGONO_COBERTURA);
+
+          if (!estaEnZona) {
+            document.getElementById("status").innerText = "Fuera de cobertura";
+            document.getElementById("subtext").style.display = "none";
+            document.getElementById("out-of-zone").style.display = "block";
+            return;
+          }
+
+          // 2. Si está dentro, buscar la sede más cercana
           const distSede1 = calcularDistancia(userLat, userLng, SEDE_1.lat, SEDE_1.lng);
           const distSede2 = calcularDistancia(userLat, userLng, SEDE_2.lat, SEDE_2.lng);
 
